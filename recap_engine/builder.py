@@ -45,6 +45,9 @@ class RecapWorkbookBuilder:
         """
         Reads existing metadata from the recap template (CTTW, descriptions, dia quality overrides).
         """
+        if os.path.basename(template_path).lower() == "recap-template.xlsx":
+            return {}, {}, {}
+
         wb = openpyxl.load_workbook(template_path, data_only=True)
         ws = wb.active
         cttw_map: Dict[str, str] = {}
@@ -85,34 +88,55 @@ class RecapWorkbookBuilder:
             m = re.search(r'\d{6}', item.style_no)
             num = m.group(0) if m else item.style_no
 
-            # 1. Carat weight fraction (Tolerance Resolution)
-            tot_wt = item.total_carat_weight
-            frac = tolerance_resolver.get_fraction(tot_wt)
+            # 1. Carat weight fraction (Tolerance Resolution strictly on diamonds)
+            has_dia = item.has_diamonds
+            tot_wt = item.total_diamond_weight if has_dia else 0.0
+            frac = tolerance_resolver.get_fraction(tot_wt) if (has_dia and tot_wt > 0) else ""
 
             if num in recap_cttw:
                 cttw = recap_cttw[num]
+            elif not has_dia:
+                cttw = "NA"
             else:
                 center_note = ""
-                if item.dia1.count == 1 and item.dia1.carat_weight >= 1.0:
+                if item.dia1.count == 1 and item.dia1.carat_weight > 0:
                     center_info = DescriptionHelper.get_center_stone_desc(item.dia1.shape_size, item.dia1.carat_weight)
                     if center_info:
                         center_note = f"      ({center_info})"
-                cttw = f"{frac} cttw{center_note}" if frac else ""
+                cttw = f"{frac} cttw{center_note}" if frac else (f"{tot_wt:.2f} cttw{center_note}" if tot_wt > 0 else "NA")
 
             # 2. Quality descriptions
-            dia_qly_desc = code_resolver.resolve_diamond_quality(item.dia1.quality_code)
+            if has_dia:
+                dia_qly_desc = code_resolver.resolve_diamond_quality(item.dia1.quality_code)
+            else:
+                dia_qly_desc = "NA"
 
             # Gemstone Information (Column I / 9):
-            # Only genuine gemstones (from Stones sheet mapping) should appear in this column.
-            # Diamonds (Center Diamonds, Lab-Grown Diamonds, or Side Diamonds) are commented out for now as requested.
             gem_qly_desc = ""
             raw_gem_code = (item.gem.quality_code or "").strip().upper()
             if raw_gem_code and raw_gem_code in code_resolver.stone_map:
-                gem_qly_desc = code_resolver.stone_map[raw_gem_code]
-            # else:
-            #     # Commented out for now: Considering Diamonds / Center Diamonds in Gemstone Information column
-            #     # gem_qly_desc = code_resolver.resolve_gem_quality(item.gem.quality_code)
-            #     pass
+                base_gem_name = code_resolver.stone_map[raw_gem_code]
+            else:
+                base_gem_name = item.gem.label if item.gem.label and item.gem.label != 'Gem' else ""
+
+            if base_gem_name or item.gem.shape_size or item.gem.dimension_mm:
+                parts_g = []
+                if item.is_bridal_set or 'MORGANITE' in str(base_gem_name).upper() or 'MORGANITE' in str(item.gem.dimension_mm).upper():
+                    parts_g.append("CENTER MORGANITE")
+                elif base_gem_name:
+                    parts_g.append(base_gem_name)
+
+                dim_str = item.gem.dimension_mm.replace(' X ', 'x').strip() if item.gem.dimension_mm else ""
+                sh_str = item.gem.shape_size.strip() if item.gem.shape_size else ""
+
+                if dim_str and dim_str.upper() not in [p.upper() for p in parts_g]:
+                    parts_g.append(dim_str)
+                elif sh_str and sh_str.upper() not in [p.upper() for p in parts_g]:
+                    parts_g.append(sh_str)
+
+                gem_qly_desc = " ".join(parts_g).strip()
+            else:
+                gem_qly_desc = "-" if has_dia else ""
 
             # 3. Description (uses commercial fraction e.g. '5/8 ctw' instead of raw cost or decimals)
             if num in recap_desc:
@@ -123,8 +147,8 @@ class RecapWorkbookBuilder:
                 description = DescriptionHelper.build_item_description(
                     metal_desc=item.metal.description_text,
                     ctw_desc=ctw_str,
-                    dia_desc=dia_qly_desc,
-                    gem_desc=gem_qly_desc,
+                    dia_desc=dia_qly_desc if has_dia else "",
+                    gem_desc=gem_qly_desc if gem_qly_desc != '-' else "",
                     style_no=item.style_no,
                     character_name=item.character_name
                 )
@@ -169,7 +193,9 @@ class RecapWorkbookBuilder:
         template_path: str,
         rows: List[RecapRow],
         output_path: str,
-        customer_name: Optional[str] = None
+        customer_name: Optional[str] = None,
+        gold_lock_rate: float = 4250.0,
+        silver_lock_rate: float = 65.0
     ) -> str:
         """
         Populates rows into the client recap template and saves the updated workbook.
@@ -180,9 +206,12 @@ class RecapWorkbookBuilder:
             table_cols = self.TOTAL_COLUMNS
 
             # 1. Update quotation date at (Row 6, Col 7)
-            ws.cell(row=6, column=7).value = date.today().strftime("%B, %d %Y")
+            ws.cell(row=6, column=7).value = date.today().strftime("%B %d, %Y")
             if customer_name:
                 ws.cell(row=9, column=1).value = customer_name
+
+            # Metal Lock rate prices at (Row 12, Col 1)
+            ws.cell(row=12, column=1).value = f"  Gold Lock: ${gold_lock_rate:,.2f} / troy oz     |     Silver Lock: ${silver_lock_rate:,.2f} / troy oz"
 
             # 2. Locate dynamic TERMS & CONDITIONS row
             tc_row = None

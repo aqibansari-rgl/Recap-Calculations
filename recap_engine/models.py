@@ -16,11 +16,18 @@ METAL_CELL_MAP: Dict[str, str] = {
     'G14WY': '14K\nWHITE/YELLOW\nGOLD',
     'G14W/DP': '14K\nWHITE / PINK\nGOLD',
     'G14WDP': '14K\nWHITE / PINK\nGOLD',
+    'G14R': '14K\nROSE\nGOLD',
+    'G10R': '10K\nROSE\nGOLD',
     'G10Y': '10K\nYELLOW\nGOLD',
     'G10W': '10K\nWHITE\nGOLD',
     'G18Y': '18K\nYELLOW\nGOLD',
     'G18W': '18K\nWHITE\nGOLD',
+    'G18R': '18K\nROSE\nGOLD',
+    'STGSIL': 'STERLING\nSILVER',
+    'STG': 'STERLING\nSILVER',
     'SIL': 'STERLING\nSILVER',
+    'SS': 'STERLING\nSILVER',
+    '925': 'STERLING\nSILVER',
     'PLT': 'PLATINUM',
 }
 
@@ -29,13 +36,20 @@ METAL_DESC_MAP: Dict[str, str] = {
     'G14W': '14K White Gold',
     'G14W/Y': '14K White/Yellow Gold',
     'G14WY': '14K White/Yellow Gold',
-    'G14W/DP': '14K White / Pink Gold',
-    'G14WDP': '14K White / Pink Gold',
+    'G14W/DP': '14K White & Pink Gold',
+    'G14WDP': '14K White & Pink Gold',
+    'G14R': '14K Rose Gold',
+    'G10R': '10K Rose Gold',
     'G10Y': '10K Yellow Gold',
     'G10W': '10K White Gold',
     'G18Y': '18K Yellow Gold',
     'G18W': '18K White Gold',
+    'G18R': '18K Rose Gold',
+    'STGSIL': 'Silver',
+    'STG': 'Silver',
     'SIL': 'Sterling Silver',
+    'SS': 'Silver',
+    '925': 'Sterling Silver',
     'PLT': 'Platinum',
 }
 
@@ -114,6 +128,17 @@ class StyleItem:
     def total_carat_weight(self) -> float:
         """Sum of all diamond and gemstone carat weights."""
         return round(self.dia1.carat_weight + self.dia2.carat_weight + self.gem.carat_weight, 4)
+
+    @property
+    def total_diamond_weight(self) -> float:
+        """Sum of diamond carat weights strictly (excludes gemstones)."""
+        return round(self.dia1.carat_weight + self.dia2.carat_weight, 4)
+
+    @property
+    def has_diamonds(self) -> bool:
+        """True if style item contains diamonds."""
+        return (self.total_diamond_weight > 0 or
+                (bool(self.dia1.quality_code) and self.dia1.quality_code.upper() not in ('NA', '', '-')))
 
     @property
     def effective_unit_price(self) -> Any:

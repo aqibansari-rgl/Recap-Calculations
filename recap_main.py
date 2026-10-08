@@ -141,7 +141,7 @@ def load_recap_metadata(filepath):
 def get_center_desc(dia1_size, dia1_wt):
     s = str(dia1_size or '').upper()
     wt_int = round(float(dia1_wt)) if dia1_wt else 2
-    if 'MRQ' in s:  return f"Center Marqise {wt_int}ct"
+    if 'MRQ' in s:  return f"Center Marquise {wt_int}ct"
     if 'OVAL' in s: return f"Center Oval {wt_int}ct"
     if 'CUS' in s:  return f"Center Cushion {wt_int}ct"
     if 'PER' in s:  return f"Center Pear {wt_int}ct"

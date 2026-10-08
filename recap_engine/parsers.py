@@ -47,6 +47,11 @@ class PricingBlockParser:
     Handles duplicate revised quote selection and Bridal Set box consolidations.
     """
 
+    def __init__(self, stone_codes: Optional[Any] = None):
+        self.stone_codes = {str(c).strip().upper() for c in stone_codes} if stone_codes else set()
+        self.gold_lock_rate = 4250.0
+        self.silver_lock_rate = 65.0
+
     @staticmethod
     def _safe_str(row: List[Any], idx: int, default: str = "") -> str:
         try:
@@ -70,6 +75,23 @@ class PricingBlockParser:
         m = re.search(r'\d{6}', str(text or ''))
         return m.group(0) if m else str(text or '').strip()
 
+    def _is_gemstone_stone(self, shape: str, qly: str, mm: str, label: str = "") -> bool:
+        s = str(shape or '').upper()
+        q = str(qly or '').upper()
+        m = str(mm or '').upper()
+        lbl = str(label or '').upper()
+        if any(q.startswith(d) for d in ['LGD', 'RLGD', 'MLGD', 'OWLG', 'CULG', 'PRLG', 'WNDA', 'NDA', 'BDA']):
+            return False
+        if self.stone_codes and q in self.stone_codes:
+            return True
+        if s.startswith('STN') or s.startswith('GEM'):
+            return True
+        if any(gem in m or gem in lbl or gem in s for gem in ['MORGANITE', 'SAPH', 'SAPPHIRE', 'TANZANITE', 'AMETHYST', 'TOPAZ', 'RUBY', 'EMERALD', 'OPAL']):
+            return True
+        if any(q.startswith(g) for g in ['OVCMG', 'RDXSW', 'RDXS', 'OVTZ', 'TZ', 'CMG']):
+            return True
+        return False
+
     def parse_block(self, block: List[List[Any]]) -> StyleItem:
         """Parses a multi-row block representing a single style into a StyleItem."""
         r0 = block[0]
@@ -77,50 +99,67 @@ class PricingBlockParser:
         r2 = block[2] if len(block) > 2 else []
 
         # 1. Identity & Metal
+        gw = self._safe_float(r0, 5) or self._safe_float(r1, 5)
+        sw = self._safe_float(r0, 5) if str(r0[3] or '').strip().upper() in ('SIL', 'STGSIL', 'SS', '925') else 0.0
+        if sw > 0:
+            gw = 0.0
+
         metal = MetalDetails(
             code=self._safe_str(r0, 3),
-            gold_weight=self._safe_float(r1, 5),
-            silver_weight=self._safe_float(r0, 5),
+            gold_weight=gw,
+            silver_weight=sw,
             gold_alloy=self._safe_str(r1, 3),
             total_value=self._safe_float(r0, 7)
         )
 
-        # 2. Diamonds & Gemstones
-        dia1 = StoneDetails(
-            label="Dia1",
-            shape_size=self._safe_str(r0, 8),
-            range_code=self._safe_str(r0, 9),
-            dimension_mm=self._safe_str(r0, 10),
-            count=self._safe_float(r0, 11),
-            quality_code=self._safe_str(r0, 12),
-            carat_weight=self._safe_float(r0, 13),
-            rate=self._safe_float(r0, 14),
-            value=self._safe_float(r0, 15)
-        )
+        # 2. Dynamic Stone Scanning across all rows in the block
+        diamonds: List[StoneDetails] = []
+        gemstones: List[StoneDetails] = []
 
-        dia2 = StoneDetails(
-            label="Dia2",
-            shape_size=self._safe_str(r1, 8),
-            range_code=self._safe_str(r1, 9),
-            dimension_mm=self._safe_str(r1, 10),
-            count=self._safe_float(r1, 11),
-            quality_code=self._safe_str(r1, 12),
-            carat_weight=self._safe_float(r1, 13),
-            rate=self._safe_float(r1, 14),
-            value=self._safe_float(r1, 15)
-        )
+        for r in block:
+            sh = self._safe_str(r, 8)
+            rg = self._safe_str(r, 9)
+            mm = self._safe_str(r, 10)
+            cnt = self._safe_float(r, 11)
+            qly = self._safe_str(r, 12)
+            wt = self._safe_float(r, 13)
+            rt = self._safe_float(r, 14)
+            val = self._safe_float(r, 15)
 
-        gem = StoneDetails(
-            label=self._safe_str(r2, 2) or "Gem",
-            shape_size=self._safe_str(r2, 8),
-            range_code=self._safe_str(r2, 9),
-            dimension_mm=self._safe_str(r2, 10),
-            count=self._safe_float(r2, 11),
-            quality_code=self._safe_str(r2, 12),
-            carat_weight=self._safe_float(r2, 13),
-            rate=self._safe_float(r2, 14),
-            value=self._safe_float(r2, 15)
-        )
+            # Skip summary lines or rows without real stone definition
+            if 'TOTAL' in sh.upper() or 'TOTAL' in qly.upper():
+                continue
+            if not (qly or (sh and not sh.upper().startswith('WITH DIA CUT')) or cnt > 0):
+                continue
+
+            stn = StoneDetails(
+                shape_size=sh, range_code=rg, dimension_mm=mm,
+                count=cnt, quality_code=qly, carat_weight=wt,
+                rate=rt, value=val
+            )
+            if self._is_gemstone_stone(sh, qly, mm, self._safe_str(r, 2)):
+                stn.label = self._safe_str(r, 2) or "Gem"
+                gemstones.append(stn)
+            else:
+                stn.label = f"Dia{len(diamonds)+1}"
+                diamonds.append(stn)
+
+        dia1 = diamonds[0] if len(diamonds) > 0 else StoneDetails()
+        dia2 = StoneDetails()
+        if len(diamonds) == 2:
+            dia2 = diamonds[1]
+        elif len(diamonds) > 2:
+            dia2 = diamonds[1]
+            extra_wt = sum(d.carat_weight for d in diamonds[2:])
+            extra_cnt = sum(d.count for d in diamonds[2:])
+            dia2.carat_weight = round(dia2.carat_weight + extra_wt, 4)
+            dia2.count += extra_cnt
+
+        gem = gemstones[0] if gemstones else StoneDetails()
+        if len(gemstones) > 1:
+            mm_list = [g.dimension_mm for g in gemstones if g.dimension_mm]
+            if mm_list:
+                gem.dimension_mm = " & ".join(dict.fromkeys(mm_list))
 
         # 3. Pricing - Check MEMO COST / WITH TARIFF MEMO COST
         memo_price: Optional[float] = None
@@ -182,6 +221,21 @@ class PricingBlockParser:
         matrix = ExcelMatrixReader.read(file_path)
         if len(matrix) < 3:
             return []
+
+        # Extract dynamic Metal Lock rates from pricing sheet
+        gold_rate = 0.0
+        silver_rate = 0.0
+        for row in matrix[:25]:
+            if len(row) > 4:
+                code_s = str(row[3] or '').strip().upper()
+                r_val = self._safe_float(row, 4)
+                if r_val > 0:
+                    if any(g in code_s for g in ['G14', 'G10', 'G18', 'GOLD']):
+                        gold_rate = gold_rate or r_val
+                    elif any(s in code_s for s in ['SIL', 'STGSIL', 'SS', '925']):
+                        silver_rate = silver_rate or r_val
+        self.gold_lock_rate = gold_rate or 4250.0
+        self.silver_lock_rate = silver_rate or 65.0
 
         # Split into style row blocks by numeric Sr No
         raw_blocks: List[Tuple[List[List[Any]], int]] = []
@@ -273,6 +327,10 @@ class PricingBlockParser:
 
                 if tot_dia_wt:
                     re_item.dia1.carat_weight = round(tot_dia_wt, 2)
+                    re_item.dia2.carat_weight = 0.0
+
+                if not re_item.gem.quality_code and rb_item.gem.quality_code:
+                    re_item.gem = rb_item.gem
 
                 final_items.append(re_item)
             else:

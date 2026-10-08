@@ -189,7 +189,7 @@ class DescriptionHelper:
         s = str(dia_size or '').upper()
         wt_int = round(float(dia_wt)) if dia_wt else 2
         shape_names = {
-            'MRQ': 'Marqise',
+            'MRQ': 'Marquise',
             'OVAL': 'Oval',
             'CUS': 'Cushion',
             'PER': 'Pear',

@@ -36,7 +36,7 @@ class RecapPipeline:
         print("Initializing RecapPipeline (loading shared lookups)...")
         self.code_resolver = QualityCodeResolver(mapping_file)
         self.tolerance_resolver = ToleranceResolver(tolerance_csv)
-        self.parser = PricingBlockParser()
+        self.parser = PricingBlockParser(stone_codes=set(self.code_resolver.stone_map.keys()))
         self.builder = RecapWorkbookBuilder()
         print("Shared lookups initialized successfully.")
 
@@ -97,7 +97,9 @@ class RecapPipeline:
                 template_path=recap_template,
                 rows=recap_rows,
                 output_path=recap_out_path,
-                customer_name=customer_name
+                customer_name=customer_name,
+                gold_lock_rate=getattr(self.parser, 'gold_lock_rate', 4250.0),
+                silver_lock_rate=getattr(self.parser, 'silver_lock_rate', 65.0)
             )
 
             elapsed = round(time.time() - t0, 2)
