@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Summary Sheet Creation — Renaissance Global Limited</title>
+  <meta name="description" content="Renaissance Global Limited — Automated Summary Sheet Creation workflow for customer pricing sheets and diamond specifications.">
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23C4A882'/><text x='16' y='22' font-family='Georgia, serif' font-size='15' font-weight='bold' fill='white' text-anchor='middle'>RG</text></svg>">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-summary-sheet">
+  <!-- Subtle Ambient Glow Orbs (Soft Cream & Light Green on 80%+ White Canvas) -->
+  <div class="ambient-canvas" aria-hidden="true">
+    <div class="glow-shape shape-1"></div>
+    <div class="glow-shape shape-2"></div>
+  </div>
+
+  <div class="page-wrapper app-layout">
+    <!-- Top Portal Header -->
+    <header class="portal-header">
+      <div class="brand-group">
+        <a href="index.html" class="brand-monogram" title="Back to Portal Home">RG</a>
+        <div class="brand-meta">
+          <span class="brand-name">Renaissance Global</span>
+          <span class="brand-sub">Limited</span>
+        </div>
+      </div>
+
+      <!-- Navigation & User Info -->
+      <div class="header-user-nav">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span class="status-text">Automation Engine: Ready</span>
+        </div>
+
+        <div class="user-profile-badge">
+          <span class="user-avatar icon-tan">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </span>
+          <span class="user-email-text" id="header-user-email">operations@renaissanceglobal.com</span>
+        </div>
+
+        <a href="index.html" class="btn btn-secondary btn-sm" id="header-logout-btn" title="Sign out of session">
+          <span>Sign Out</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Breadcrumb / Workflow Title -->
+    <nav class="breadcrumb-bar" aria-label="Breadcrumb">
+      <div class="breadcrumb-trail">
+        <a href="index.html" class="breadcrumb-link">Portal</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-link">Automations Hub</span>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">Summary Sheet Creation</span>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="summary-sheet-main">
+      <div class="summary-layout-grid">
+        
+        <!-- Left / Form Container -->
+        <section class="form-section-card">
+          <div class="card-header">
+            <div class="tag-pill sm">
+              <span class="tag-icon">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+              </span>
+              <span>Automated Sheet Generator</span>
+            </div>
+            <h1 class="card-title">Summary Sheet Creation</h1>
+            <p class="card-subtitle">
+              Configure parameters to generate an automated pricing & recap summary workbook.
+            </p>
+          </div>
+
+          <!-- SUMMARY SHEET CREATION FORM -->
+          <form id="summary-sheet-form" onsubmit="return false;" novalidate>
+            
+            <!-- INPUT 1: Customer -->
+            <div class="form-group">
+              <label for="input-customer" class="form-label">
+                <span>1. Customer</span>
+                <span class="required-indicator">*</span>
+              </label>
+              <div class="input-wrapper">
+                <span class="input-icon icon-tan">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </span>
+                <input 
+                  type="text" 
+                  id="input-customer" 
+                  name="customer" 
+                  class="form-input" 
+                  placeholder="Enter Customer Name or select from suggestions..." 
+                  list="customer-suggestions" 
+                  required 
+                  autocomplete="off"
+                >
+                <datalist id="customer-suggestions">
+                  <option value="Signet Jewelers">
+                  <option value="Zales">
+                  <option value="Kay Jewelers">
+                  <option value="Jared Galleria">
+                  <option value="Helzberg Diamonds">
+                  <option value="Fred Meyer Jewelers">
+                  <option value="Macy's Fine Jewelry">
+                  <option value="Amazon Luxury">
+                  <option value="Xaver Retail Partners">
+                </datalist>
+              </div>
+              <span class="field-error" id="customer-error">Please specify a customer name.</span>
+
+              <!-- Quick Customer Chips -->
+              <div class="quick-chips">
+                <span class="chips-label">Quick select:</span>
+                <button type="button" class="chip-btn" data-customer="Signet Jewelers">Signet</button>
+                <button type="button" class="chip-btn" data-customer="Zales">Zales</button>
+                <button type="button" class="chip-btn" data-customer="Kay Jewelers">Kay</button>
+                <button type="button" class="chip-btn" data-customer="Helzberg Diamonds">Helzberg</button>
+                <button type="button" class="chip-btn" data-customer="Xaver Retail Partners">Xaver</button>
+              </div>
+            </div>
+
+            <!-- INPUT 2: File : Pricing Sheet -->
+            <div class="form-group">
+              <label class="form-label">
+                <span>2. File: Pricing Sheet</span>
+                <span class="required-indicator">*</span>
+              </label>
+
+              <!-- Drag and Drop Upload Area -->
+              <div class="file-drop-zone" id="file-drop-zone">
+                <input 
+                  type="file" 
+                  id="input-pricing-sheet" 
+                  name="pricing_sheet" 
+                  class="file-input-hidden" 
+                  accept=".xlsx, .xls, .csv" 
+                  required
+                >
+                <div class="drop-zone-content" id="drop-zone-idle">
+                  <div class="drop-icon-wrap icon-green">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                  </div>
+                  <div class="drop-text">
+                    <span class="drop-title">Upload Pricing Sheet</span>
+                    <span class="drop-subtitle">Drag and drop spreadsheet here, or <button type="button" class="btn-text-link" id="browse-file-btn">browse files</button></span>
+                  </div>
+                  <div class="drop-hint">Supports .xlsx, .xls, .csv (Max 25MB)</div>
+                </div>
+
+                <!-- Selected File Display -->
+                <div class="file-selected-card" id="file-selected-card" style="display: none;">
+                  <div class="file-card-info">
+                    <div class="file-icon-badge icon-tan">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="8" y1="13" x2="16" y2="13"></line>
+                        <line x1="8" y1="17" x2="16" y2="17"></line>
+                      </svg>
+                    </div>
+                    <div class="file-details">
+                      <span class="file-name" id="display-file-name">Pricing_Master_2026.xlsx</span>
+                      <span class="file-size" id="display-file-size">1.4 MB • Excel Workbook</span>
+                    </div>
+                  </div>
+                  <button type="button" class="file-remove-btn" id="file-remove-btn" title="Remove file" aria-label="Remove selected file">&times;</button>
+                </div>
+              </div>
+              <span class="field-error" id="file-error">Please select a valid Pricing Sheet spreadsheet.</span>
+            </div>
+
+            <!-- INPUT 3: Diamond Quality -->
+            <div class="form-group">
+              <label for="input-diamond-quality" class="form-label">
+                <span>3. Diamond Quality</span>
+                <span class="required-indicator">*</span>
+              </label>
+              
+              <div class="input-wrapper">
+                <span class="input-icon icon-cream">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 3h12l4 6-10 12L2 9z"></path>
+                    <path d="M11 3v6"></path>
+                    <path d="M13 3v6"></path>
+                  </svg>
+                </span>
+                <select id="input-diamond-quality" name="diamond_quality" class="form-input form-select" required>
+                  <option value="" disabled selected>Select Diamond Quality Grade...</option>
+                  <option value="I1-I2 / H-I (Commercial)">I1-I2 / H-I (Commercial Standard)</option>
+                  <option value="SI1-SI2 / G-H (Fine Commercial)">SI1-SI2 / G-H (Fine Commercial)</option>
+                  <option value="SI1 / F-G (Premium Retail)">SI1 / F-G (Premium Retail)</option>
+                  <option value="VS1-VS2 / F-G (High Precision)">VS1-VS2 / F-G (High Precision)</option>
+                  <option value="VVS / D-F (Signature Collection)">VVS / D-F (Signature Collection)</option>
+                  <option value="Lab-Grown / SI-VS / E-F">Lab-Grown / SI-VS / E-F (Sustainable)</option>
+                  <option value="Custom Specification">Custom Diamond Quality Spec...</option>
+                </select>
+              </div>
+              <span class="field-error" id="quality-error">Please select a diamond quality specification.</span>
+
+              <!-- Quality Quick Selection Badges -->
+              <div class="quality-badges-row">
+                <button type="button" class="quality-pill" data-quality="I1-I2 / H-I (Commercial)">I1-I2 / H-I</button>
+                <button type="button" class="quality-pill" data-quality="SI1-SI2 / G-H (Fine Commercial)">SI1-SI2 / G-H</button>
+                <button type="button" class="quality-pill" data-quality="VS1-VS2 / F-G (High Precision)">VS1-VS2 / F-G</button>
+                <button type="button" class="quality-pill" data-quality="Lab-Grown / SI-VS / E-F">Lab-Grown</button>
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions-row">
+              <button type="submit" class="btn btn-primary" id="btn-create-summary">
+                <span class="btn-spinner" id="btn-spinner" style="display: none;"></span>
+                <span class="btn-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </span>
+                <span id="btn-text">Generate Summary Sheet</span>
+              </button>
+
+              <button type="button" class="btn btn-secondary" id="btn-reset-form">
+                <span>Reset Fields</span>
+              </button>
+            </div>
+
+          </form>
+        </section>
+
+        <!-- Right / Automation Processing Status & Live Output Preview -->
+        <aside class="automation-preview-card">
+          <div class="preview-header">
+            <div class="preview-title-group">
+              <span class="preview-eyebrow">Automation Pipeline</span>
+              <h2 class="preview-title">Summary Output Status</h2>
+            </div>
+            <span class="status-pill-badge" id="pipeline-status-badge">Standby</span>
+          </div>
+
+          <!-- Processing Progress Bar -->
+          <div class="pipeline-progress-container" id="progress-container" style="display: none;">
+            <div class="progress-labels">
+              <span id="progress-step-text">Reading pricing sheet formulas...</span>
+              <span id="progress-percent-text">0%</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- Empty / Initial Guide View -->
+          <div class="preview-body" id="preview-idle-view">
+            <div class="idle-illustration icon-tan">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+              </svg>
+            </div>
+            <h3 class="idle-heading">Awaiting Summary Inputs</h3>
+            <p class="idle-text">
+              Provide the Customer name, upload the Pricing Sheet file, and pick the Diamond Quality grade. The automation engine will consolidate line items, margin tables, and output a completed Summary Sheet.
+            </p>
+            <div class="idle-tips">
+              <div class="tip-item">
+                <span class="tip-dot icon-green"></span>
+                <span>Automatic SKU matching against master diamond matrices</span>
+              </div>
+              <div class="tip-item">
+                <span class="tip-dot icon-tan"></span>
+                <span>Instant markup & currency calculations</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Completed Generated Summary Result View -->
+          <div class="generated-result-card" id="preview-result-view" style="display: none;">
+            <div class="result-success-banner">
+              <div class="success-icon icon-green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <div>
+                <h4 class="result-title">Summary Sheet Generated</h4>
+                <span class="result-time" id="result-timestamp">Processed at 18:58:30</span>
+              </div>
+            </div>
+
+            <!-- Key Summary Metadata Metrics -->
+            <div class="result-metrics-grid">
+              <div class="result-metric">
+                <span class="metric-key">Customer</span>
+                <span class="metric-val" id="res-customer">Signet Jewelers</span>
+              </div>
+              <div class="result-metric">
+                <span class="metric-key">Diamond Quality</span>
+                <span class="metric-val" id="res-quality">SI1-SI2 / G-H</span>
+              </div>
+              <div class="result-metric">
+                <span class="metric-key">Pricing Source</span>
+                <span class="metric-val" id="res-file">Pricing_Sheet.xlsx</span>
+              </div>
+              <div class="result-metric">
+                <span class="metric-key">Parsed SKUs</span>
+                <span class="metric-val text-green">148 Line Items</span>
+              </div>
+            </div>
+
+            <!-- Generated File Download Box -->
+            <div class="download-box">
+              <div class="download-info">
+                <div class="download-icon icon-green">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                    <line x1="9" y1="15" x2="12" y2="18"></line>
+                    <line x1="15" y1="15" x2="12" y2="18"></line>
+                  </svg>
+                </div>
+                <div>
+                  <span class="generated-filename" id="gen-filename">Signet_Summary_Sheet_SI1-GH.xlsx</span>
+                  <span class="generated-filesize">Ready for download • 482 KB</span>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="btn-download-sheet">
+                <span>Download Sheet</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="portal-footer">
+      <div class="footer-left">
+        <span>&copy; 2026 Renaissance Global Limited. All rights reserved.</span>
+      </div>
+      <div class="footer-right">
+        <span class="footer-tag">Summary Sheet Engine v2.4</span>
+        <span class="footer-tag">Active Session: Secure</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script src="summary-sheet.js"></script>
+</body>
+</html>
