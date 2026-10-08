@@ -83,72 +83,22 @@
                   <line x1="16" y1="17" x2="8" y2="17"></line>
                 </svg>
               </span>
-              <span>Automated Sheet Generator</span>
+              <span>Server Master Template & Code Mappings Active</span>
             </div>
-            <h1 class="card-title">Summary Sheet Creation</h1>
+            <h1 class="card-title">Client Recap Generation</h1>
             <p class="card-subtitle">
-              Configure parameters to generate an automated pricing & recap summary workbook.
+              Upload your Pricing Sheet. The system automatically applies the master Recap Template, Code Mappings, and Diamond Tolerances from the server.
             </p>
           </div>
 
           <!-- SUMMARY SHEET CREATION FORM -->
           <form id="summary-sheet-form" onsubmit="return false;" novalidate>
             
-            <!-- INPUT 1: Customer -->
-            <div class="form-group">
-              <label for="input-customer" class="form-label">
-                <span>1. Customer</span>
-                <span class="required-indicator">*</span>
-              </label>
-              <div class="input-wrapper">
-                <span class="input-icon icon-tan">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                </span>
-                <input 
-                  type="text" 
-                  id="input-customer" 
-                  name="customer" 
-                  class="form-input" 
-                  placeholder="Enter Customer Name or select from suggestions..." 
-                  list="customer-suggestions" 
-                  required 
-                  autocomplete="off"
-                >
-                <datalist id="customer-suggestions">
-                  <option value="Signet Jewelers">
-                  <option value="Zales">
-                  <option value="Kay Jewelers">
-                  <option value="Jared Galleria">
-                  <option value="Helzberg Diamonds">
-                  <option value="Fred Meyer Jewelers">
-                  <option value="Macy's Fine Jewelry">
-                  <option value="Amazon Luxury">
-                  <option value="Xaver Retail Partners">
-                </datalist>
-              </div>
-              <span class="field-error" id="customer-error">Please specify a customer name.</span>
-
-              <!-- Quick Customer Chips -->
-              <div class="quick-chips">
-                <span class="chips-label">Quick select:</span>
-                <button type="button" class="chip-btn" data-customer="Signet Jewelers">Signet</button>
-                <button type="button" class="chip-btn" data-customer="Zales">Zales</button>
-                <button type="button" class="chip-btn" data-customer="Kay Jewelers">Kay</button>
-                <button type="button" class="chip-btn" data-customer="Helzberg Diamonds">Helzberg</button>
-                <button type="button" class="chip-btn" data-customer="Xaver Retail Partners">Xaver</button>
-              </div>
-            </div>
-
-            <!-- INPUT 2: File : Pricing Sheet -->
+            <!-- INPUT 1: File : Pricing Sheet (Required) -->
             <div class="form-group">
               <label class="form-label">
-                <span>2. File: Pricing Sheet</span>
-                <span class="required-indicator">*</span>
+                <span>1. Upload Pricing Sheet</span>
+                <span class="required-indicator">* Required</span>
               </label>
 
               <!-- Drag and Drop Upload Area -->
@@ -173,7 +123,7 @@
                     <span class="drop-title">Upload Pricing Sheet</span>
                     <span class="drop-subtitle">Drag and drop spreadsheet here, or <button type="button" class="btn-text-link" id="browse-file-btn">browse files</button></span>
                   </div>
-                  <div class="drop-hint">Supports .xlsx, .xls, .csv (Max 25MB)</div>
+                  <div class="drop-hint">Supports .xlsx, .xls, .csv (Template & Mappings loaded from server)</div>
                 </div>
 
                 <!-- Selected File Display -->
@@ -198,11 +148,56 @@
               <span class="field-error" id="file-error">Please select a valid Pricing Sheet spreadsheet.</span>
             </div>
 
-            <!-- INPUT 3: Diamond Quality -->
+            <!-- INPUT 2: Customer (Optional) -->
+            <div class="form-group">
+              <label for="input-customer" class="form-label">
+                <span>2. Customer / Account</span>
+                <span class="text-muted" style="font-size: 0.8rem; font-weight: normal; margin-left: 6px;">(Optional — defaults to Sheet / Client)</span>
+              </label>
+              <div class="input-wrapper">
+                <span class="input-icon icon-tan">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </span>
+                <input 
+                  type="text" 
+                  id="input-customer" 
+                  name="customer" 
+                  class="form-input" 
+                  placeholder="Enter Customer Name or select below..." 
+                  list="customer-suggestions" 
+                  autocomplete="off"
+                >
+                <datalist id="customer-suggestions">
+                  <option value="ZALES ENCHANTED BRIDAL">
+                  <option value="ZALES CANADA">
+                  <option value="Signet Jewelers">
+                  <option value="Kay Jewelers">
+                  <option value="Helzberg Diamonds">
+                  <option value="Macy's Fine Jewelry">
+                </datalist>
+              </div>
+              <span class="field-error" id="customer-error">Please specify a customer name.</span>
+
+              <!-- Quick Customer Chips -->
+              <div class="quick-chips">
+                <span class="chips-label">Quick select:</span>
+                <button type="button" class="chip-btn" data-customer="ZALES ENCHANTED BRIDAL">Enchanted</button>
+                <button type="button" class="chip-btn" data-customer="ZALES CANADA">Zales Canada</button>
+                <button type="button" class="chip-btn" data-customer="Signet Jewelers">Signet</button>
+                <button type="button" class="chip-btn" data-customer="Helzberg Diamonds">Helzberg</button>
+              </div>
+            </div>
+
+            <!-- INPUT 3: Diamond Quality (Optional) -->
             <div class="form-group">
               <label for="input-diamond-quality" class="form-label">
-                <span>3. Diamond Quality</span>
-                <span class="required-indicator">*</span>
+                <span>3. Diamond Quality Specification</span>
+                <span class="text-muted" style="font-size: 0.8rem; font-weight: normal; margin-left: 6px;">(Optional — resolved from Pricing Sheet & Code Mapping)</span>
               </label>
               
               <div class="input-wrapper">
@@ -213,8 +208,8 @@
                     <path d="M13 3v6"></path>
                   </svg>
                 </span>
-                <select id="input-diamond-quality" name="diamond_quality" class="form-input form-select" required>
-                  <option value="" disabled selected>Select Diamond Quality Grade...</option>
+                <select id="input-diamond-quality" name="diamond_quality" class="form-input form-select">
+                  <option value="" selected>Auto-detect from Pricing Sheet & Code Mapping...</option>
                   <option value="I1-I2 / H-I (Commercial)">I1-I2 / H-I (Commercial Standard)</option>
                   <option value="SI1-SI2 / G-H (Fine Commercial)">SI1-SI2 / G-H (Fine Commercial)</option>
                   <option value="SI1 / F-G (Premium Retail)">SI1 / F-G (Premium Retail)</option>
@@ -244,7 +239,7 @@
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 </span>
-                <span id="btn-text">Generate Summary Sheet</span>
+                <span id="btn-text">Generate Client Recap</span>
               </button>
 
               <button type="button" class="btn btn-secondary" id="btn-reset-form">
@@ -311,7 +306,7 @@
                 </svg>
               </div>
               <div>
-                <h4 class="result-title">Summary Sheet Generated</h4>
+                <h4 class="result-title">Client Recap Generated</h4>
                 <span class="result-time" id="result-timestamp">Processed at 18:58:30</span>
               </div>
             </div>
@@ -349,12 +344,12 @@
                   </svg>
                 </div>
                 <div>
-                  <span class="generated-filename" id="gen-filename">Signet_Summary_Sheet_SI1-GH.xlsx</span>
-                  <span class="generated-filesize">Ready for download • 482 KB</span>
+                  <span class="generated-filename" id="gen-filename">Client_Recap_Workbook.xlsx</span>
+                  <span class="generated-filesize">Ready for download • Recap Sheet</span>
                 </div>
               </div>
               <button type="button" class="btn btn-primary btn-sm" id="btn-download-sheet">
-                <span>Download Sheet</span>
+                <span>Download Recap</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="7 10 12 15 17 10"></polyline>

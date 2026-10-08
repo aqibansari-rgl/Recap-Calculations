@@ -8,16 +8,27 @@ import os
 import re
 import csv
 import io
-from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory, send_file
-from werkzeug.utils import secure_filename
+import sys
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from datetime import datetime
+from werkzeug.utils import secure_filename
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from flask import Flask, request, jsonify, send_from_directory, send_file
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+# Import Recap Engine without changing any of its internal logic
+from recap_engine.pipeline import RecapPipeline, PipelineResult
+
 UPLOADS_DIR = os.path.join(BASE_DIR, 'uploads')
 OUTPUTS_DIR = os.path.join(BASE_DIR, 'outputs')
+FILES_BT_DIR = os.path.join(BASE_DIR, 'files_BT')
+MAPPING_FILE = os.path.join(FILES_BT_DIR, 'Code_Mapping.xlsx')
+TOLERANCE_FILE = os.path.join(FILES_BT_DIR, 'tollerance.csv')
+BASE_TEMPLATE_PATH = os.path.join(BASE_DIR, 'static', 'Recap-Template.xlsx')
 
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
@@ -25,6 +36,74 @@ os.makedirs(OUTPUTS_DIR, exist_ok=True)
 app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 
 ALLOWED_EXTENSIONS = {'.xlsx', '.xls', '.csv'}
+
+# Pre-registered project pairs matching CLI runners
+PROJECT_PAIRS = [
+    {
+        "id": 1,
+        "name": "Belle's 35th Anniversary",
+        "customer": "ZALES ENCHANTED BRIDAL",
+        "folder": "Belles_35th_Anniversary",
+        "pricing_file": "Belle's 35th Anniversary Spring test pricing.xlsx",
+        "recap_out_name": "Belles_35th_Anniversary_recap_UPDATED.xlsx",
+    },
+    {
+        "id": 2,
+        "name": "Zales Morganite Bridal",
+        "customer": "ZALES ENCHANTED BRIDAL",
+        "folder": "Zales_Morganite",
+        "pricing_file": "Zales Morganite Bridal pricing.xlsx",
+        "recap_out_name": "Zales_Morganite_Bridal_recap_UPDATED.xlsx",
+    },
+    {
+        "id": 3,
+        "name": "Zales Disney Bridal",
+        "customer": "ZALES ENCHANTED BRIDAL",
+        "folder": "Zales_Disney",
+        "pricing_file": "Zales Dinsey Bridal pricing dtd 29.09.xlsx",
+        "recap_out_name": "Zales_Disney_Bridal_recap_UPDATED.xlsx",
+    },
+    {
+        "id": 4,
+        "name": "Zales Canada Gemstone CORE",
+        "customer": "ZALES CANADA",
+        "folder": "Zales_Canada_Gemstone_CORE",
+        "pricing_file": "Zales Canada- Gemstone- CORE- 9-15 Meeting Pricing.xls",
+        "recap_out_name": "Zales_Canada_Gemstone_CORE_recap_UPDATED.xlsx",
+    },
+    {
+        "id": 5,
+        "name": "Zales Canada Diamond CORE",
+        "customer": "ZALES CANADA",
+        "folder": "Zales_Canada_Diamond_CORE",
+        "pricing_file": "Zales Canada- Diamond- PRICING-  9-15 Meeting- Christie Byrd.xlsx",
+        "recap_out_name": "Zales_Canada_Diamond_CORE_recap_UPDATED.xlsx",
+    },
+]
+
+# Initialize Recap Engine Pipeline
+recap_pipeline = None
+try:
+    if os.path.exists(MAPPING_FILE) and os.path.exists(TOLERANCE_FILE):
+        recap_pipeline = RecapPipeline(
+            mapping_file=MAPPING_FILE,
+            tolerance_csv=TOLERANCE_FILE
+        )
+        print("Recap Engine successfully initialized and attached to server.")
+except Exception as e:
+    print(f"Warning: Error initializing RecapPipeline: {e}")
+
+
+def get_recap_pipeline():
+    """Lazy loader for Recap Engine Pipeline."""
+    global recap_pipeline
+    if recap_pipeline is None:
+        if os.path.exists(MAPPING_FILE) and os.path.exists(TOLERANCE_FILE):
+            recap_pipeline = RecapPipeline(
+                mapping_file=MAPPING_FILE,
+                tolerance_csv=TOLERANCE_FILE
+            )
+    return recap_pipeline
 
 
 def allowed_file(filename):
@@ -60,7 +139,6 @@ def parse_pricing_sheet(file_path, filename):
             wb = openpyxl.load_workbook(file_path, data_only=True)
             sheet = wb.active
             for row in sheet.iter_rows(values_only=True):
-                # skip empty rows
                 if not any(row):
                     continue
                 if not columns:
@@ -186,13 +264,11 @@ def generate_summary_workbook(customer, diamond_quality, source_filename, column
         desc = str(row_val[1]) if len(row_val) > 1 and row_val[1] is not None else "Fine Jewelry Piece"
         metal = str(row_val[2]) if len(row_val) > 2 and row_val[2] is not None else "14K Gold"
         
-        # Ctw
         try:
             ctw = float(row_val[3]) if len(row_val) > 3 and row_val[3] is not None else 0.75
         except (ValueError, TypeError):
             ctw = 0.75
 
-        # Base Cost
         try:
             cost = float(row_val[4]) if len(row_val) > 4 and row_val[4] is not None else 450.00
         except (ValueError, TypeError):
@@ -252,8 +328,50 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "service": "Renaissance Global Automation Engine",
-        "version": "2.4.0",
+        "version": "2.5.0",
+        "engine": "recap_engine",
         "timestamp": datetime.now().isoformat()
+    })
+
+
+@app.route('/api/projects', methods=['GET'])
+def list_projects():
+    """Returns list of pre-configured customer project pairs."""
+    return jsonify({
+        "success": True,
+        "projects": PROJECT_PAIRS
+    })
+
+
+@app.route('/api/recap/run-project/<int:project_id>', methods=['POST'])
+def run_project(project_id):
+    """Executes a registered project by ID through the Recap Engine."""
+    pipeline = get_recap_pipeline()
+    if not pipeline:
+        return jsonify({"success": False, "error": "Recap Engine not initialized"}), 500
+
+    target = next((p for p in PROJECT_PAIRS if p['id'] == project_id), None)
+    if not target:
+        return jsonify({"success": False, "error": f"Project ID {project_id} not found"}), 404
+
+    results = pipeline.process_all([target], BASE_DIR, default_template=BASE_TEMPLATE_PATH)
+    if not results:
+        return jsonify({"success": False, "error": "Execution returned no results"}), 500
+
+    r = results[0]
+    out_filename = os.path.basename(r.output_recap) if r.output_recap else ""
+    return jsonify({
+        "success": r.status == "SUCCESS",
+        "data": {
+            "project_id": r.pair_id,
+            "project_name": r.name,
+            "status": r.status,
+            "styles_count": r.styles_count,
+            "elapsed_seconds": r.elapsed_seconds,
+            "generated_filename": out_filename,
+            "download_url": f"/api/download/{out_filename}",
+            "error_message": r.error_message
+        }
     })
 
 
@@ -261,19 +379,19 @@ def health_check():
 def handle_summary_sheet():
     """
     REST API endpoint that reads:
-    1. customer (string)
-    2. pricing_sheet (file: .xlsx, .xls, .csv)
-    3. diamond_quality (string)
+    1. pricing_sheet (file: .xlsx, .xls, .csv) — REQUIRED
+    2. customer (string) — OPTIONAL (defaults to 'CLIENT RECAP')
+    3. diamond_quality (string) — OPTIONAL (defaults to 'From Pricing Sheet')
+
+    The server automatically applies:
+    - Master Recap Template from static/Recap-Template.xlsx
+    - Code Mapping from files_BT/Code_Mapping.xlsx
+    - Diamond Tolerances from files_BT/tollerance.csv
+    User only uploads their pricing sheet.
     """
     # 1. Validate Form Inputs
-    customer = request.form.get('customer', '').strip()
-    diamond_quality = request.form.get('diamond_quality', '').strip()
-
-    if not customer:
-        return jsonify({"success": False, "error": "Missing required field: 'customer'"}), 400
-
-    if not diamond_quality:
-        return jsonify({"success": False, "error": "Missing required field: 'diamond_quality'"}), 400
+    customer = request.form.get('customer', '').strip() or 'CLIENT RECAP'
+    diamond_quality = request.form.get('diamond_quality', '').strip() or 'From Pricing Sheet'
 
     if 'pricing_sheet' not in request.files:
         return jsonify({"success": False, "error": "Missing required file: 'pricing_sheet'"}), 400
@@ -297,44 +415,97 @@ def handle_summary_sheet():
     file.save(upload_path)
     file_size_bytes = os.path.getsize(upload_path)
 
-    # 3. Read and Parse Spreadsheet
-    columns, rows_data = parse_pricing_sheet(upload_path, safe_name)
-
-    # 4. Calculate Multipliers & Generate Summary Excel Workbook
+    # 3. Determine Execution Path (Recap Engine vs Fallback Summary Generator)
     multiplier = get_quality_multiplier(diamond_quality)
-    out_filename, out_path = generate_summary_workbook(
-        customer=customer,
-        diamond_quality=diamond_quality,
-        source_filename=original_filename,
-        columns=columns,
-        rows_data=rows_data,
-        multiplier=multiplier
-    )
+    pipeline = get_recap_pipeline()
+    use_recap_engine = False
+    out_filename = ""
+    total_parsed_items = 0
+    columns_detected = []
 
-    # 5. Return JSON Response
+    ext = os.path.splitext(saved_filename)[1].lower()
+    if pipeline and ext in ['.xlsx', '.xls']:
+        try:
+            clean_cust = re.sub(r'[^a-zA-Z0-9]', '_', customer)
+            base_raw = os.path.splitext(safe_name)[0]
+            clean_base = re.sub(r'[^a-zA-Z0-9]', '_', base_raw)
+            timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+            target_out_name = f"{clean_cust}_{clean_base}_Recap_{timestamp_str}.xlsx"
+
+            template_path = BASE_TEMPLATE_PATH
+            if not os.path.exists(template_path):
+                fallback_tpl = os.path.join(FILES_BT_DIR, "Belle's 35th Anniversary recap.xlsx")
+                if os.path.exists(fallback_tpl):
+                    template_path = fallback_tpl
+
+            result = pipeline.process_project(
+                pricing_file=upload_path,
+                recap_template=template_path,
+                output_dir=OUTPUTS_DIR,
+                output_recap_name=target_out_name,
+                customer_name=customer
+            )
+
+            if result.status == "SUCCESS" and result.styles_count > 0:
+                use_recap_engine = True
+                out_filename = os.path.basename(result.output_recap)
+                total_parsed_items = result.styles_count
+                columns_detected = [
+                    "SR NO", "Customer / Division", "Vendor Style / Item #",
+                    "Item Description", "Total Diamond Weight", "Metal Type",
+                    "Diamond Quality", "Gold Price Basis", "Factory Fty / DDP Price",
+                    "Final Selling Price", "Gemstone Information"
+                ]
+            else:
+                print(f"Recap Engine: {result.status} (styles: {result.styles_count}, error: {result.error_message}). Using standard summary.")
+        except Exception as e:
+            print(f"Recap Engine exception: {e}. Falling back to standard summary workbook.")
+
+    if not use_recap_engine:
+        columns, rows_data = parse_pricing_sheet(upload_path, safe_name)
+        columns_detected = columns
+        total_parsed_items = len(rows_data)
+        out_filename, out_path = generate_summary_workbook(
+            customer=customer,
+            diamond_quality=diamond_quality,
+            source_filename=original_filename,
+            columns=columns,
+            rows_data=rows_data,
+            multiplier=multiplier
+        )
+
+    # 4. Return JSON Response
     return jsonify({
         "success": True,
-        "message": "Summary Sheet generated and validated successfully.",
+        "message": "Client Recap Workbook generated successfully via Recap Engine." if use_recap_engine else "Summary Sheet generated and validated successfully.",
         "data": {
             "customer": customer,
             "diamond_quality": diamond_quality,
             "source_file": original_filename,
             "file_size_bytes": file_size_bytes,
-            "total_rows_parsed": len(rows_data),
-            "columns_detected": columns,
+            "total_rows_parsed": total_parsed_items,
+            "columns_detected": columns_detected,
             "applied_multiplier": multiplier,
             "generated_filename": out_filename,
             "download_url": f"/api/download/{out_filename}",
-            "processed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "processed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "engine": "recap_engine" if use_recap_engine else "standard_summary"
         }
     }), 200
 
 
 @app.route('/api/download/<path:filename>', methods=['GET'])
 def download_summary_sheet(filename):
-    """Serves the generated Summary Sheet for download."""
+    """Serves the generated Summary Sheet or Recap workbook for download."""
     safe_name = secure_filename(filename)
     file_path = os.path.join(OUTPUTS_DIR, safe_name)
+    if not os.path.exists(file_path):
+        # Search recursively across OUTPUTS_DIR in case of subfolder outputs
+        for root, _, files in os.walk(OUTPUTS_DIR):
+            if safe_name in files:
+                file_path = os.path.join(root, safe_name)
+                break
+
     if not os.path.exists(file_path):
         return jsonify({"success": False, "error": "Requested file not found"}), 404
 
@@ -364,3 +535,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     print(f"Renaissance Global Backend REST API starting on http://localhost:{port}")
     app.run(host='0.0.0.0', port=port, debug=False)
+

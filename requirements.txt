@@ -1,0 +1,16 @@
+# ==============================================================================
+# Renaissance Global Limited — Recap Automation Engine & Web Portal
+# Dependencies for headless cross-platform Excel processing & REST API
+# ==============================================================================
+
+# Web Framework & API Server
+Flask>=2.2.0
+Werkzeug>=2.2.0
+
+# Spreadsheet Engines (100% headless, no MS Excel or COM required)
+openpyxl>=3.1.0     # Modern .xlsx reading, writing, styling, and template population
+xlrd>=2.0.1         # Legacy .xls pricing sheet parser support
+
+# Production WSGI Servers (Optional)
+# gunicorn>=20.1.0  # Recommended for Linux headless production
+# waitress>=2.1.0  # Recommended for Windows production

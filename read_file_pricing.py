@@ -1,7 +1,31 @@
-import win32com.client as win32
 import os
 import csv
 import time
+import openpyxl
+
+def read_pricing_sheet(file_path):
+    """
+    Directly reads pricing sheet rows without launching MS Excel.
+    Supports both .xlsx (via openpyxl) and .xls (via xlrd).
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    used_range = []
+
+    if ext == '.xls':
+        import xlrd
+        wb = xlrd.open_workbook(file_path)
+        ws = wb.sheet_by_index(0)
+        for r in range(ws.nrows):
+            used_range.append([ws.cell_value(r, c) for c in range(ws.ncols)])
+    else:
+        wb = openpyxl.load_workbook(file_path, data_only=True, read_only=True)
+        ws = wb.worksheets[0]
+        for row in ws.iter_rows(values_only=True):
+            used_range.append(list(row))
+        wb.close()
+
+    return used_range
+
 
 def parse_block(block, header1, header2):
     """
@@ -205,221 +229,206 @@ def parse_block(block, header1, header2):
     return record
 
 
-def convert_excel(file_path, output_csv, images_dir):
+def convert_excel(file_path, output_csv, images_dir=None):
     file_path = os.path.abspath(file_path)
-    os.makedirs(images_dir, exist_ok=True)
+    if images_dir:
+        os.makedirs(images_dir, exist_ok=True)
 
-    print("Starting Excel in background...")
-    excel = win32.Dispatch('Excel.Application')
-    excel.Visible = False
-    excel.DisplayAlerts = False
-    wb = None
+    print(f"Reading '{os.path.basename(file_path)}' directly in Python...")
+    used_range = read_pricing_sheet(file_path)
+    print(f"Loaded {len(used_range)} rows from sheet.")
 
-    try:
-        wb = excel.Workbooks.Open(file_path)
-        ws = wb.Worksheets(1)
-        print("Reading all cells...")
-        used_range = ws.UsedRange.Value
+    header1 = list(used_range[0])
+    header2 = list(used_range[1])
 
-        header1 = list(used_range[0])
-        header2 = list(used_range[1])
+    records = []
+    current_block = []
+    block_start_row = -1  # 1-based row in sheet
 
-        records = []
-        current_block = []
-        block_start_row = -1  # 1-based row in sheet for image lookup
+    raw_blocks = []
+    for i, row in enumerate(used_range):
+        if i < 2:
+            continue  # skip headers
+        row = list(row)
+        col_a = row[0] if row else None
 
-        raw_blocks = []
-        for i, row in enumerate(used_range):
-            if i < 2:
-                continue  # skip headers
-            row = list(row)
-            col_a = row[0] if row else None
+        is_num_sr = False
+        if col_a is not None and col_a != '':
+            if isinstance(col_a, (int, float)):
+                is_num_sr = True
+            elif str(col_a).strip().replace('.0', '').isdigit():
+                is_num_sr = True
 
-            if col_a is not None and isinstance(col_a, (int, float)):
-                if current_block:
-                    raw_blocks.append((current_block, block_start_row))
-                current_block = [row]
-                block_start_row = i + 1  # 1-based
-            elif current_block:
-                current_block.append(row)
+        if is_num_sr:
+            if current_block:
+                raw_blocks.append((current_block, block_start_row))
+            current_block = [row]
+            block_start_row = i + 1  # 1-based
+        elif current_block:
+            current_block.append(row)
 
-        if current_block:
-            raw_blocks.append((current_block, block_start_row))
+    if current_block:
+        raw_blocks.append((current_block, block_start_row))
 
-        import re
-        import copy
+    import re
+    import copy
 
-        def get_digits(s):
-            m = re.search(r'\d{6}', str(s or ''))
-            return m.group(0) if m else str(s or '').strip()
+    def get_digits(s):
+        m = re.search(r'\d{6}', str(s or ''))
+        return m.group(0) if m else str(s or '').strip()
 
-        # First pass: Group raw blocks into logical items (Bridal Set pairs or Standalone blocks)
-        # and collect all occurrences per unique style key
-        style_occurrences = {}  # style_key -> list of (is_bs, style_name, blk, next_blk, start_row)
-        ordered_keys = []
+    # First pass: Group raw blocks into logical items (Bridal Set pairs or Standalone blocks)
+    # and collect all occurrences per unique style key
+    style_occurrences = {}  # style_key -> list of (is_bs, style_name, blk, next_blk, start_row)
+    ordered_keys = []
 
-        idx = 0
-        while idx < len(raw_blocks):
-            blk, start_row = raw_blocks[idx]
-            re_sn = str(blk[0][1] or '').strip() if blk and len(blk[0]) > 1 else ''
-            re_dig = get_digits(re_sn)
+    idx = 0
+    while idx < len(raw_blocks):
+        blk, start_row = raw_blocks[idx]
+        re_sn = str(blk[0][1] or '').strip() if blk and len(blk[0]) > 1 else ''
+        re_dig = get_digits(re_sn)
 
-            bs_codes = [r[4] for r in blk if len(r) > 4 and r[4] and str(r[4]).strip().startswith('BS')]
+        bs_codes = [r[4] for r in blk if len(r) > 4 and r[4] and str(r[4]).strip().startswith('BS')]
 
-            if bs_codes and (idx + 1) < len(raw_blocks):
-                bs_code = str(bs_codes[0]).strip()
-                bs_dig = get_digits(bs_code)
-                next_blk, next_start = raw_blocks[idx + 1]
+        if bs_codes and (idx + 1) < len(raw_blocks):
+            bs_code = str(bs_codes[0]).strip()
+            bs_dig = get_digits(bs_code)
+            next_blk, next_start = raw_blocks[idx + 1]
 
-                key = bs_dig
-                if key not in style_occurrences:
-                    style_occurrences[key] = []
-                    ordered_keys.append(key)
-                style_occurrences[key].append((True, bs_code, blk, next_blk, start_row))
-                idx += 2
-            else:
-                key = re_dig
-                if key not in style_occurrences:
-                    style_occurrences[key] = []
-                    ordered_keys.append(key)
-                style_occurrences[key].append((False, re_sn, blk, None, start_row))
-                idx += 1
+            key = bs_dig
+            if key not in style_occurrences:
+                style_occurrences[key] = []
+                ordered_keys.append(key)
+            style_occurrences[key].append((True, bs_code, blk, next_blk, start_row))
+            idx += 2
+        else:
+            key = re_dig
+            if key not in style_occurrences:
+                style_occurrences[key] = []
+                ordered_keys.append(key)
+            style_occurrences[key].append((False, re_sn, blk, None, start_row))
+            idx += 1
 
-        # Second pass: For each style, take the FIRST DUPLICATE row (Occurrence index 1 if 2+ exist, else index 0)
-        # and ignore the second/further duplicate rows (index 2+)
-        records = []
-        for key in ordered_keys:
-            occ_list = style_occurrences[key]
-            # Pick index 1 (the first duplicate row) if multiple exist, otherwise index 0
-            chosen = occ_list[1] if len(occ_list) >= 2 else occ_list[0]
+    # Second pass: For each style, take the FIRST DUPLICATE row (Occurrence index 1 if 2+ exist, else index 0)
+    # and ignore the second/further duplicate rows (index 2+)
+    records = []
+    for key in ordered_keys:
+        occ_list = style_occurrences[key]
+        # Pick index 1 (the first duplicate row) if multiple exist, otherwise index 0
+        chosen = occ_list[1] if len(occ_list) >= 2 else occ_list[0]
 
-            is_bs, style_name, blk, next_blk, start_row = chosen
-            if is_bs:
-                re_rec = parse_block(blk, header1, header2)
-                rb_rec = parse_block(next_blk, header1, header2)
+        is_bs, style_name, blk, next_blk, start_row = chosen
+        if is_bs:
+            re_rec = parse_block(blk, header1, header2)
+            rb_rec = parse_block(next_blk, header1, header2)
 
-                # Look for BOX SET price in next_blk
-                box_prices = [r[50] for r in next_blk if len(r) > 50 and r[48] and 'BOX SET' in str(r[48]).upper()]
-                box_price = box_prices[0] if box_prices else None
+            # Look for BOX SET price in next_blk
+            box_prices = [r[50] for r in next_blk if len(r) > 50 and r[48] and 'BOX SET' in str(r[48]).upper()]
+            box_price = box_prices[0] if box_prices else None
 
-                # Look for TOTAL DIA WT in next_blk
-                tot_dia_wts = [r[13] for r in next_blk if len(r) > 13 and r[12] and 'TOTAL DIA WT' in str(r[12]).upper()]
-                tot_dia_wt = tot_dia_wts[0] if tot_dia_wts else None
+            # Look for TOTAL DIA WT in next_blk
+            tot_dia_wts = [r[13] for r in next_blk if len(r) > 13 and r[12] and 'TOTAL DIA WT' in str(r[12]).upper()]
+            tot_dia_wt = tot_dia_wts[0] if tot_dia_wts else None
 
-                # Build consolidated Bridal Set record
-                bs_rec = copy.deepcopy(re_rec)
-                bs_rec['Style_No'] = style_name
-                bs_rec['Components'] = f"Bridal Set ({re_rec.get('Style_No')} + {rb_rec.get('Style_No')})"
+            # Build consolidated Bridal Set record
+            bs_rec = copy.deepcopy(re_rec)
+            bs_rec['Style_No'] = style_name
+            bs_rec['Components'] = f"Bridal Set ({re_rec.get('Style_No')} + {rb_rec.get('Style_No')})"
 
-                # Sum metal weights
-                try:
-                    sil_wt = float(re_rec.get('Max_Wt_SIL') or 0) + float(rb_rec.get('Max_Wt_SIL') or 0)
-                    bs_rec['Max_Wt_SIL'] = str(round(sil_wt, 2)) if sil_wt > 0 else ''
-                except:
-                    pass
-                try:
-                    gold_wt = float(re_rec.get('Max_Wt_GOLD') or 0) + float(rb_rec.get('Max_Wt_GOLD') or 0)
-                    bs_rec['Max_Wt_GOLD'] = str(round(gold_wt, 2)) if gold_wt > 0 else ''
-                except:
-                    pass
-
-                if tot_dia_wt is not None:
-                    try:
-                        bs_rec['Dia1_Wt'] = str(round(float(tot_dia_wt), 2))
-                    except:
-                        bs_rec['Dia1_Wt'] = str(tot_dia_wt)
-
-                if box_price is not None:
-                    try:
-                        bs_rec['NY_Sell_Incl_COOP'] = str(round(float(box_price), 2))
-                    except:
-                        bs_rec['NY_Sell_Incl_COOP'] = str(box_price)
-                elif bs_rec.get('Memo_Price'):
-                    bs_rec['NY_Sell_Incl_COOP'] = bs_rec['Memo_Price']
-                elif rb_rec.get('Memo_Price'):
-                    bs_rec['NY_Sell_Incl_COOP'] = rb_rec['Memo_Price']
-
-                records.append((bs_rec, start_row))
-            else:
-                records.append((parse_block(blk, header1, header2), start_row))
-
-        print(f"\nParsed {len(records)} clean unique consolidated style entries (first duplicate rows captured).")
-
-        if records:
-            keys = list(records[0][0].keys())
-            keys.append('Image_File')
-
-            # --- Extract Images ---
-            print("\nExtracting images...")
-            # Map: row_number (1-based) -> image filename
-            row_to_img = {}
+            # Sum metal weights
             try:
-                shapes = ws.Shapes
-                print(f"Found {shapes.Count} shapes.")
-                for i in range(1, shapes.Count + 1):
-                    shape = shapes(i)
-                    if shape.Type == 13:  # msoPicture
-                        img_row = shape.TopLeftCell.Row
-                        row_to_img[img_row] = img_row  # store row for later naming
-            except Exception as e:
-                print(f"Warning: Could not iterate shapes: {e}")
-
-            # Now save images and name them by Style No
+                sil_wt = float(re_rec.get('Max_Wt_SIL') or 0) + float(rb_rec.get('Max_Wt_SIL') or 0)
+                bs_rec['Max_Wt_SIL'] = str(round(sil_wt, 2)) if sil_wt > 0 else ''
+            except:
+                pass
             try:
-                from PIL import ImageGrab
-                for i in range(1, ws.Shapes.Count + 1):
-                    shape = ws.Shapes(i)
-                    if shape.Type == 13:
-                        img_row = shape.TopLeftCell.Row
-                        # Find which style this belongs to
-                        style_no = "Unknown"
-                        for rec, start_row in records:
-                            if abs(start_row - img_row) <= 10:
-                                style_no = rec.get('Style_No', 'Unknown')
-                                break
+                gold_wt = float(re_rec.get('Max_Wt_GOLD') or 0) + float(rb_rec.get('Max_Wt_GOLD') or 0)
+                bs_rec['Max_Wt_GOLD'] = str(round(gold_wt, 2)) if gold_wt > 0 else ''
+            except:
+                pass
 
-                        safe_name = "".join(c for c in style_no if c.isalnum() or c in (' ', '_', '-')).strip()
-                        img_file = f"{safe_name}_R{img_row}.png"
-                        img_path = os.path.join(images_dir, img_file)
+            if tot_dia_wt is not None:
+                try:
+                    bs_rec['Dia1_Wt'] = str(round(float(tot_dia_wt), 2))
+                except:
+                    bs_rec['Dia1_Wt'] = str(tot_dia_wt)
 
-                        shape.Copy()
-                        time.sleep(0.6)
-                        img = ImageGrab.grabclipboard()
-                        if img:
-                            img.save(img_path, 'PNG')
-                            print(f"  Saved: {img_file}")
-                            row_to_img[img_row] = img_file
-                        else:
-                            print(f"  Clipboard empty for row {img_row}")
-            except ImportError:
-                print("Pillow not installed - skipping image save. Run: pip install pillow")
+            if box_price is not None:
+                try:
+                    bs_rec['NY_Sell_Incl_COOP'] = str(round(float(box_price), 2))
+                except:
+                    bs_rec['NY_Sell_Incl_COOP'] = str(box_price)
+            elif bs_rec.get('Memo_Price'):
+                bs_rec['NY_Sell_Incl_COOP'] = bs_rec['Memo_Price']
+            elif rb_rec.get('Memo_Price'):
+                bs_rec['NY_Sell_Incl_COOP'] = rb_rec['Memo_Price']
 
-            # Match images to records
-            for rec, start_row in records:
-                matched = ''
-                for img_row, img_file in row_to_img.items():
-                    if abs(start_row - img_row) <= 10:
-                        matched = img_file if isinstance(img_file, str) else ''
-                        break
-                rec['Image_File'] = matched
+            records.append((bs_rec, start_row))
+        else:
+            records.append((parse_block(blk, header1, header2), start_row))
 
-            # Write CSV
-            print(f"\nWriting to {output_csv}...")
-            with open(output_csv, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.DictWriter(f, fieldnames=keys)
-                writer.writeheader()
-                for rec, _ in records:
-                    writer.writerow(rec)
-            print("Done!")
+    print(f"\nParsed {len(records)} clean unique consolidated style entries (first duplicate rows captured).")
 
-    finally:
-        if wb: wb.Close(False)
-        excel.Quit()
+    if records:
+        keys = list(records[0][0].keys())
+        keys.append('Image_File')
+
+        # ------------------------------------------------------------------
+        # [IMAGE EXTRACTION COMMENTED OUT FOR NOW - CAN BE RE-ENABLED LATER]
+        # ------------------------------------------------------------------
+        # print("\nExtracting images...")
+        # row_to_img = {}
+        # try:
+        #     shapes = ws.Shapes
+        #     print(f"Found {shapes.Count} shapes.")
+        #     for i in range(1, shapes.Count + 1):
+        #         shape = shapes(i)
+        #         if shape.Type == 13:  # msoPicture
+        #             img_row = shape.TopLeftCell.Row
+        #             row_to_img[img_row] = img_row  # store row for later naming
+        #
+        #     from PIL import ImageGrab
+        #     for i in range(1, ws.Shapes.Count + 1):
+        #         shape = ws.Shapes(i)
+        #         if shape.Type == 13:
+        #             img_row = shape.TopLeftCell.Row
+        #             style_no = "Unknown"
+        #             for rec, start_row in records:
+        #                 if abs(start_row - img_row) <= 10:
+        #                     style_no = rec.get('Style_No', 'Unknown')
+        #                     break
+        #             safe_name = "".join(c for c in style_no if c.isalnum() or c in (' ', '_', '-')).strip()
+        #             img_file = f"{safe_name}_R{img_row}.png"
+        #             img_path = os.path.join(images_dir, img_file) if images_dir else img_file
+        #             shape.Copy()
+        #             time.sleep(0.6)
+        #             img = ImageGrab.grabclipboard()
+        #             if img:
+        #                 img.save(img_path, 'PNG')
+        #                 row_to_img[img_row] = img_file
+        # except Exception as e:
+        #     print(f"Image extraction skipped: {e}")
+        # ------------------------------------------------------------------
+
+        # Assign empty Image_File since image extraction is disabled for now
+        for rec, start_row in records:
+            rec['Image_File'] = ''
+
+        # Write CSV
+        print(f"\nWriting to {output_csv}...")
+        with open(output_csv, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=keys)
+            writer.writeheader()
+            for rec, _ in records:
+                writer.writerow(rec)
+        print("Done!")
 
 
 if __name__ == "__main__":
+    _curr = os.path.dirname(os.path.abspath(__file__))
+    _root = os.path.abspath(os.path.join(_curr, "..")) if os.path.basename(_curr).lower() == "calculation" else _curr
     convert_excel(
-        r"C:\Users\ASUS\Documents\Manufacturing\3Marketing\Recap\files_BT\Belle's 35th Anniversary Spring test pricing.xlsx",
-        r"C:\Users\ASUS\Documents\Manufacturing\3Marketing\Recap\outputs\Belles_35th_Anniversary\structured_styles.csv",
-        r"C:\Users\ASUS\Documents\Manufacturing\3Marketing\Recap\outputs\Belles_35th_Anniversary\style_images"
+        os.path.join(_root, "files_BT", "Belle's 35th Anniversary Spring test pricing.xlsx"),
+        os.path.join(_root, "outputs", "Belles_35th_Anniversary", "structured_styles.csv"),
+        os.path.join(_root, "outputs", "Belles_35th_Anniversary", "style_images")
     )
