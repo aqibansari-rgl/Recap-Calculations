@@ -1441,3 +1441,54 @@ body {
     position: static;
   }
 }
+
+/* Pricing Basis Toggle Cards */
+.price-basis-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.price-basis-option {
+  cursor: pointer;
+  display: block;
+}
+
+.price-basis-option input[type="radio"] {
+  display: none;
+}
+
+.basis-card {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  background-color: #FFFFFF;
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.price-basis-option:hover .basis-card {
+  border-color: var(--tan-base);
+  box-shadow: var(--shadow-subtle);
+}
+
+.price-basis-option.active .basis-card,
+.price-basis-option input[type="radio"]:checked + .basis-card {
+  border-color: var(--green-dark);
+  background-color: #F8FAF8;
+  box-shadow: 0 2px 8px rgba(110, 142, 114, 0.15);
+}
+
+.basis-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-title);
+  margin-bottom: 2px;
+}
+
+.basis-sub {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}

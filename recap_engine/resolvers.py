@@ -208,18 +208,54 @@ class DescriptionHelper:
         gem_desc: str = "",
         style_no: str = "",
         dia_val: Optional[str] = None,
-        character_name: str = ""
+        character_name: str = "",
+        collection_name: str = "",
+        has_diamonds: bool = True,
+        gem_name: str = ""
     ) -> str:
-        """Assembles a full descriptive string: Metal  Fraction ctw  Dia Qly  Gem Qly  [Character Name]."""
+        """
+        Assembles marketing description following client standards:
+        e.g. 14K White & Pink Gold 5/8cttw Lab Grown Diamond & Morganite "Belle" Enchanted Star Bridal
+        """
+        # If collection name or character is present, use standardized marketing phrasing
+        if collection_name or character_name:
+            parts = []
+            if metal_desc:
+                parts.append(metal_desc.strip())
+
+            clean_ctw = re.sub(r'\s*ctt?w', '', ctw_desc, flags=re.IGNORECASE).strip()
+            if clean_ctw and clean_ctw not in ("NA", "-"):
+                parts.append(f"{clean_ctw}cttw")
+
+            # Stone Phrasing
+            clean_gem = gem_name.strip() if gem_name else (gem_desc.strip() if gem_desc and gem_desc != '-' else "")
+            if has_diamonds and clean_gem:
+                parts.append(f"Lab Grown Diamond & {clean_gem}")
+            elif has_diamonds:
+                parts.append("Lab Grown Diamond")
+            elif clean_gem:
+                parts.append(f"With {clean_gem}")
+
+            # Character (quoted)
+            if character_name:
+                c_clean = character_name.strip().replace('"', '')
+                parts.append(f'"{c_clean}"')
+
+            # Collection / Program Name
+            if collection_name:
+                parts.append(collection_name.strip())
+
+            return " ".join(p for p in parts if p)
+
+        # Standard Fallback Phrasing
         parts = [metal_desc]
         token = ctw_desc or dia_val or ""
         if token:
             parts.append(token)
         if dia_desc:
             parts.append(dia_desc)
-        if gem_desc:
+        if gem_desc and gem_desc != '-':
             parts.append(gem_desc)
         if character_name:
             parts.append(character_name)
-        # style_no is omitted from all descriptions as per user request
         return '  '.join(p for p in parts if p)

@@ -14,6 +14,35 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23C4A882'/><text x='16' y='22' font-family='Georgia, serif' font-size='15' font-weight='bold' fill='white' text-anchor='middle'>RG</text></svg>">
 
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Authentication Guard: Without login no one can access anything inside the app -->
+  <style id="auth-guard-style">
+    body { display: none !important; }
+  </style>
+  <script>
+    (function () {
+      try {
+        var rawSession = sessionStorage.getItem('rg_auth_session') || localStorage.getItem('rg_auth_session');
+        var session = rawSession ? JSON.parse(rawSession) : null;
+        if (!session || !session.authenticated) {
+          window.location.replace('index.html');
+          return;
+        }
+        // User is authenticated - remove guard once DOM is ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', function() {
+            var guard = document.getElementById('auth-guard-style');
+            if (guard) guard.remove();
+          });
+        } else {
+          var guard = document.getElementById('auth-guard-style');
+          if (guard) guard.remove();
+        }
+      } catch (err) {
+        window.location.replace('index.html');
+      }
+    })();
+  </script>
 </head>
 <body class="page-summary-sheet">
   <!-- Subtle Ambient Glow Orbs (Soft Cream & Light Green on 80%+ White Canvas) -->
@@ -193,10 +222,72 @@
               </div>
             </div>
 
-            <!-- INPUT 3: Diamond Quality (Optional) -->
+            <!-- INPUT 3: Collection / Program Name (Optional) -->
+            <div class="form-group">
+              <label for="input-collection" class="form-label">
+                <span>3. Collection / Program Name</span>
+                <span class="text-muted" style="font-size: 0.8rem; font-weight: normal; margin-left: 6px;">(Optional — e.g. Enchanted Star Bridal, Belle-35th Anniversary)</span>
+              </label>
+              <div class="input-wrapper">
+                <span class="input-icon icon-tan">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                  </svg>
+                </span>
+                <input 
+                  type="text" 
+                  id="input-collection" 
+                  name="collection_name" 
+                  class="form-input" 
+                  placeholder="e.g. Enchanted Star Bridal, Belle-35th Anniversary..." 
+                  list="collection-suggestions" 
+                  autocomplete="off"
+                >
+                <datalist id="collection-suggestions">
+                  <option value="Enchanted Star Bridal">
+                  <option value="Belle-35th Anniversary">
+                  <option value="Core Gemstone">
+                  <option value="Diamond Core">
+                </datalist>
+              </div>
+
+              <!-- Quick Collection Chips -->
+              <div class="quick-chips">
+                <span class="chips-label">Quick select:</span>
+                <button type="button" class="chip-btn chip-collection" data-collection="Enchanted Star Bridal">Enchanted Star Bridal</button>
+                <button type="button" class="chip-btn chip-collection" data-collection="Belle-35th Anniversary">Belle-35th Anniversary</button>
+                <button type="button" class="chip-btn chip-collection" data-collection="Core Gemstone">Core Gemstone</button>
+              </div>
+            </div>
+
+            <!-- INPUT 4: Pricing Basis Selector -->
+            <div class="form-group">
+              <label class="form-label">
+                <span>4. Pricing Basis</span>
+              </label>
+              <div class="price-basis-toggle-group">
+                <label class="price-basis-option active" id="basis-option-memo">
+                  <input type="radio" name="price_basis" id="basis-memo" value="MEMO_COST" checked>
+                  <span class="basis-card">
+                    <span class="basis-title">MEMO COST</span>
+                    <span class="basis-sub">Marketing Recap Standard (Default)</span>
+                  </span>
+                </label>
+                <label class="price-basis-option" id="basis-option-selling">
+                  <input type="radio" name="price_basis" id="basis-selling" value="SELLING_PRICE">
+                  <span class="basis-card">
+                    <span class="basis-title">Standard Selling Price</span>
+                    <span class="basis-sub">NY Selling Price Incl. Coop</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- INPUT 5: Diamond Quality (Optional) -->
             <div class="form-group">
               <label for="input-diamond-quality" class="form-label">
-                <span>3. Diamond Quality Specification</span>
+                <span>5. Diamond Quality Specification</span>
                 <span class="text-muted" style="font-size: 0.8rem; font-weight: normal; margin-left: 6px;">(Optional — resolved from Pricing Sheet & Code Mapping)</span>
               </label>
               
@@ -318,16 +409,16 @@
                 <span class="metric-val" id="res-customer">Signet Jewelers</span>
               </div>
               <div class="result-metric">
-                <span class="metric-key">Diamond Quality</span>
-                <span class="metric-val" id="res-quality">SI1-SI2 / G-H</span>
+                <span class="metric-key">Collection / Program</span>
+                <span class="metric-val" id="res-collection">Default</span>
               </div>
               <div class="result-metric">
-                <span class="metric-key">Pricing Source</span>
-                <span class="metric-val" id="res-file">Pricing_Sheet.xlsx</span>
+                <span class="metric-key">Pricing Basis</span>
+                <span class="metric-val" id="res-price-basis">MEMO COST</span>
               </div>
               <div class="result-metric">
-                <span class="metric-key">Parsed SKUs</span>
-                <span class="metric-val text-green">148 Line Items</span>
+                <span class="metric-key">Parsed Items</span>
+                <span class="metric-val text-green" id="res-skus">0 Line Items</span>
               </div>
             </div>
 

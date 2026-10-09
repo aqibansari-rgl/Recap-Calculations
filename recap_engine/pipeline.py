@@ -48,7 +48,9 @@ class RecapPipeline:
         output_recap_name: str,
         pair_id: int = 1,
         project_name: str = "Project",
-        customer_name: Optional[str] = None
+        customer_name: Optional[str] = None,
+        collection_name: Optional[str] = None,
+        price_basis: str = "MEMO_COST"
     ) -> PipelineResult:
         """
         Executes end-to-end transformation for a single project pair.
@@ -59,6 +61,9 @@ class RecapPipeline:
         print(f"    Recap Template: {os.path.basename(recap_template)}")
         if customer_name:
             print(f"    Customer Name : {customer_name}")
+        if collection_name:
+            print(f"    Collection    : {collection_name}")
+        print(f"    Price Basis   : {price_basis}")
 
         if not os.path.exists(pricing_file):
             return PipelineResult(
@@ -89,7 +94,9 @@ class RecapPipeline:
                 items=styles,
                 code_resolver=self.code_resolver,
                 tolerance_resolver=self.tolerance_resolver,
-                template_metadata=metadata
+                template_metadata=metadata,
+                collection_name=collection_name or "",
+                price_basis=price_basis
             )
 
             # 4. Update Recap workbook with preserved styling

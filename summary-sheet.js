@@ -7,14 +7,52 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // --- Auth Session Verification ---
+  const authSession = (() => {
+    try {
+      const raw = sessionStorage.getItem('rg_auth_session') || localStorage.getItem('rg_auth_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  if (!authSession || !authSession.authenticated) {
+    window.location.replace('index.html');
+    return;
+  }
+
+  // Populate logged in user badge
+  const headerUserEmail = document.getElementById('header-user-email');
+  if (headerUserEmail && authSession.email) {
+    headerUserEmail.textContent = authSession.email;
+  }
+
+  // Bind Sign Out action
+  const headerLogoutBtn = document.getElementById('header-logout-btn');
+  if (headerLogoutBtn) {
+    headerLogoutBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem('rg_auth_session');
+      localStorage.removeItem('rg_auth_session');
+      window.location.replace('index.html');
+    });
+  }
+
   // Form & Input elements
   const form = document.getElementById('summary-sheet-form');
   const inputCustomer = document.getElementById('input-customer');
+  const inputCollection = document.getElementById('input-collection');
   const inputPricingSheet = document.getElementById('input-pricing-sheet');
   const inputDiamondQuality = document.getElementById('input-diamond-quality');
   const customerError = document.getElementById('customer-error');
   const fileError = document.getElementById('file-error');
   const qualityError = document.getElementById('quality-error');
+
+  // Pricing Basis and Collection chips
+  const chipCollectionBtns = document.querySelectorAll('.chip-collection');
+  const priceBasisInputs = document.querySelectorAll('input[name="price_basis"]');
+  const priceBasisOptions = document.querySelectorAll('.price-basis-option');
 
   // File Upload Drop Zone elements
   const fileDropZone = document.getElementById('file-drop-zone');
@@ -29,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCreateSummary = document.getElementById('btn-create-summary');
   const btnSpinner = document.getElementById('btn-spinner');
   const btnResetForm = document.getElementById('btn-reset-form');
-  const chipBtns = document.querySelectorAll('.chip-btn');
+  const chipBtns = document.querySelectorAll('.chip-btn:not(.chip-collection)');
   const qualityPills = document.querySelectorAll('.quality-pill');
 
   // Preview & Result Elements
@@ -42,8 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const previewResultView = document.getElementById('preview-result-view');
   const resultTimestamp = document.getElementById('result-timestamp');
   const resCustomer = document.getElementById('res-customer');
-  const resQuality = document.getElementById('res-quality');
-  const resFile = document.getElementById('res-file');
+  const resCollection = document.getElementById('res-collection');
+  const resPriceBasis = document.getElementById('res-price-basis');
+  const resSkus = document.getElementById('res-skus');
   const genFilename = document.getElementById('gen-filename');
   const btnDownloadSheet = document.getElementById('btn-download-sheet');
   const toastContainer = document.getElementById('toast-container');
@@ -55,10 +94,34 @@ document.addEventListener('DOMContentLoaded', () => {
   chipBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const cust = btn.getAttribute('data-customer');
-      inputCustomer.value = cust;
-      inputCustomer.classList.remove('invalid');
-      customerError.style.display = 'none';
-      inputCustomer.focus();
+      if (cust && inputCustomer) {
+        inputCustomer.value = cust;
+        inputCustomer.classList.remove('invalid');
+        customerError.style.display = 'none';
+        inputCustomer.focus();
+      }
+    });
+  });
+
+  // --- Quick Select Collection Chips ---
+  chipCollectionBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const col = btn.getAttribute('data-collection');
+      if (col && inputCollection) {
+        inputCollection.value = col;
+        inputCollection.focus();
+      }
+    });
+  });
+
+  // --- Pricing Basis Radio Card Change Handlers ---
+  priceBasisInputs.forEach(radio => {
+    radio.addEventListener('change', () => {
+      priceBasisOptions.forEach(opt => opt.classList.remove('active'));
+      const parentLabel = radio.closest('.price-basis-option');
+      if (parentLabel) {
+        parentLabel.classList.add('active');
+      }
     });
   });
 
@@ -228,8 +291,11 @@ document.addEventListener('DOMContentLoaded', () => {
       fileError.style.display = 'none';
     }
 
-    // 2. Customer & Diamond Quality (Optional, with sensible defaults)
+    // 2. Customer, Collection, Pricing Basis & Diamond Quality
     const customerVal = inputCustomer.value.trim() || 'CLIENT RECAP';
+    const collectionVal = inputCollection ? inputCollection.value.trim() : '';
+    const selectedBasisRadio = document.querySelector('input[name="price_basis"]:checked');
+    const priceBasisVal = selectedBasisRadio ? selectedBasisRadio.value : 'MEMO_COST';
     const qualityVal = inputDiamondQuality.value || 'From Pricing Sheet';
 
     // Begin Generation Sequence
@@ -262,6 +328,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Prepare Multipart Form Data for Backend REST API
     const formData = new FormData();
     formData.append('customer', customerVal);
+    formData.append('collection_name', collectionVal);
+    formData.append('price_basis', priceBasisVal);
     formData.append('pricing_sheet', selectedFile);
     formData.append('diamond_quality', qualityVal);
 
@@ -293,13 +361,12 @@ document.addEventListener('DOMContentLoaded', () => {
         pipelineStatusBadge.className = 'status-pill-badge badge-completed';
 
         resultTimestamp.textContent = `Processed on server at ${data.processed_at}`;
-        resCustomer.textContent = data.customer;
-        resQuality.textContent = data.diamond_quality;
-        resFile.textContent = data.source_file;
+        if (resCustomer) resCustomer.textContent = data.customer;
+        if (resCollection) resCollection.textContent = data.collection_name || 'Standard';
+        if (resPriceBasis) resPriceBasis.textContent = data.price_basis === 'SELLING_PRICE' ? 'Selling Price' : 'MEMO COST';
 
-        const skuMetric = document.querySelector('.metric-val.text-green');
-        if (skuMetric) {
-          skuMetric.textContent = `${data.total_rows_parsed} Line Items`;
+        if (resSkus) {
+          resSkus.textContent = `${data.total_rows_parsed} Line Items`;
         }
 
         genFilename.textContent = data.generated_filename;

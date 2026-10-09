@@ -27,6 +27,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const logoutBtn = document.getElementById('logout-btn');
   const toastContainer = document.getElementById('toast-container');
 
+  const keepSignedInInput = document.getElementById('keep-signed-in');
+
+  // --- Check Existing Active Session ---
+  try {
+    const rawSession = sessionStorage.getItem('rg_auth_session') || localStorage.getItem('rg_auth_session');
+    if (rawSession) {
+      const activeSession = JSON.parse(rawSession);
+      if (activeSession && activeSession.authenticated) {
+        if (loginFormView && authenticatedView) {
+          loginFormView.style.display = 'none';
+          authenticatedView.style.display = 'block';
+          if (loggedUserEmail) {
+            loggedUserEmail.textContent = activeSession.email || 'user@renaissanceglobal.com';
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Session verification fallback', e);
+  }
+
   // --- Toggle Password Visibility ---
   if (togglePasswordBtn) {
     togglePasswordBtn.addEventListener('click', () => {
@@ -126,6 +147,19 @@ document.addEventListener('DOMContentLoaded', () => {
       btnArrow.style.display = 'inline-flex';
       btnText.textContent = 'Sign In to Automations';
 
+      // Save authenticated session state
+      const sessionData = {
+        email: emailVal,
+        authenticated: true,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('rg_auth_session', JSON.stringify(sessionData));
+      if (keepSignedInInput && keepSignedInInput.checked) {
+        localStorage.setItem('rg_auth_session', JSON.stringify(sessionData));
+      } else {
+        localStorage.removeItem('rg_auth_session');
+      }
+
       showToast(`Authenticated! Redirecting to Summary Sheet Creation...`, 'green');
 
       setTimeout(() => {
@@ -137,6 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Logout / Sign Out ---
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
+      sessionStorage.removeItem('rg_auth_session');
+      localStorage.removeItem('rg_auth_session');
       authenticatedView.style.display = 'none';
       loginFormView.style.display = 'block';
       userPasswordInput.value = '';
@@ -148,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Launch Hub Action ---
   if (launchHubBtn) {
     launchHubBtn.addEventListener('click', () => {
-      showToast('Launching active automation workspace: 4 pipelines connected.', 'green');
+      window.location.href = 'summary-sheet-creation.html';
     });
   }
 

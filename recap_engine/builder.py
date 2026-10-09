@@ -76,7 +76,9 @@ class RecapWorkbookBuilder:
         items: List[StyleItem],
         code_resolver: QualityCodeResolver,
         tolerance_resolver: ToleranceResolver,
-        template_metadata: Tuple[Dict[str, str], Dict[str, str], Dict[str, str]]
+        template_metadata: Tuple[Dict[str, str], Dict[str, str], Dict[str, str]],
+        collection_name: str = "",
+        price_basis: str = "MEMO_COST"
     ) -> List[RecapRow]:
         """
         Transforms parsed StyleItem models into presentation RecapRow objects.
@@ -96,20 +98,20 @@ class RecapWorkbookBuilder:
             if num in recap_cttw:
                 cttw = recap_cttw[num]
             elif not has_dia:
-                cttw = "NA"
+                cttw = "-"
             else:
                 center_note = ""
                 if item.dia1.count == 1 and item.dia1.carat_weight > 0:
                     center_info = DescriptionHelper.get_center_stone_desc(item.dia1.shape_size, item.dia1.carat_weight)
                     if center_info:
                         center_note = f"      ({center_info})"
-                cttw = f"{frac} cttw{center_note}" if frac else (f"{tot_wt:.2f} cttw{center_note}" if tot_wt > 0 else "NA")
+                cttw = f"{frac} cttw{center_note}" if frac else (f"{tot_wt:.2f} cttw{center_note}" if tot_wt > 0 else "-")
 
             # 2. Quality descriptions
             if has_dia:
                 dia_qly_desc = code_resolver.resolve_diamond_quality(item.dia1.quality_code)
             else:
-                dia_qly_desc = "NA"
+                dia_qly_desc = "-"
 
             # Gemstone Information (Column I / 9):
             gem_qly_desc = ""
@@ -118,6 +120,14 @@ class RecapWorkbookBuilder:
                 base_gem_name = code_resolver.stone_map[raw_gem_code]
             else:
                 base_gem_name = item.gem.label if item.gem.label and item.gem.label != 'Gem' else ""
+
+            clean_gem_name = ""
+            if 'MORGANITE' in str(base_gem_name).upper() or 'MORGANITE' in str(item.gem.dimension_mm).upper():
+                clean_gem_name = "Morganite"
+            elif 'SAPPHIRE' in str(base_gem_name).upper() or 'SAPH' in str(base_gem_name).upper():
+                clean_gem_name = "Cr.White Sapphire"
+            elif base_gem_name:
+                clean_gem_name = base_gem_name
 
             if base_gem_name or item.gem.shape_size or item.gem.dimension_mm:
                 parts_g = []
@@ -143,17 +153,36 @@ class RecapWorkbookBuilder:
                 description = recap_desc[num]
             else:
                 clean_frac = frac.strip() if frac and not re.search(r'^\d+\.\d+$', frac.strip()) else ""
-                ctw_str = f"{clean_frac} ctw" if clean_frac else ""
+                ctw_str = f"{clean_frac}cttw" if clean_frac else ""
                 description = DescriptionHelper.build_item_description(
                     metal_desc=item.metal.description_text,
                     ctw_desc=ctw_str,
                     dia_desc=dia_qly_desc if has_dia else "",
                     gem_desc=gem_qly_desc if gem_qly_desc != '-' else "",
                     style_no=item.style_no,
-                    character_name=item.character_name
+                    character_name=item.character_name,
+                    collection_name=collection_name,
+                    has_diamonds=has_dia,
+                    gem_name=clean_gem_name
                 )
 
             final_dia_qly = recap_dia.get(num, dia_qly_desc)
+            if final_dia_qly == "NA":
+                final_dia_qly = "-"
+            if cttw == "NA":
+                cttw = "-"
+
+            # 4. Pricing based on selected basis
+            basis_clean = (price_basis or "MEMO_COST").upper()
+            if "SELLING" in basis_clean or "COOP" in basis_clean:
+                if item.is_bridal_set and item.box_price is not None:
+                    unit_price = round(item.box_price, 2)
+                elif item.ny_sell_coop is not None:
+                    unit_price = round(item.ny_sell_coop, 2)
+                else:
+                    unit_price = item.effective_unit_price
+            else:
+                unit_price = item.effective_unit_price
 
             rows.append(RecapRow(
                 sr=sr,
@@ -165,7 +194,7 @@ class RecapWorkbookBuilder:
                 dia_qly=final_dia_qly,
                 cttw=cttw,
                 gem_info=gem_qly_desc,
-                unit_price=item.effective_unit_price,
+                unit_price=unit_price,
                 comments=""
             ))
 

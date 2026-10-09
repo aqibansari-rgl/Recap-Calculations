@@ -391,6 +391,8 @@ def handle_summary_sheet():
     """
     # 1. Validate Form Inputs
     customer = request.form.get('customer', '').strip() or 'CLIENT RECAP'
+    collection_name = request.form.get('collection_name', '').strip()
+    price_basis = request.form.get('price_basis', 'MEMO_COST').strip()
     diamond_quality = request.form.get('diamond_quality', '').strip() or 'From Pricing Sheet'
 
     if 'pricing_sheet' not in request.files:
@@ -443,7 +445,9 @@ def handle_summary_sheet():
                 recap_template=template_path,
                 output_dir=OUTPUTS_DIR,
                 output_recap_name=target_out_name,
-                customer_name=customer
+                customer_name=customer,
+                collection_name=collection_name,
+                price_basis=price_basis
             )
 
             if result.status == "SUCCESS" and result.styles_count > 0:
@@ -480,6 +484,8 @@ def handle_summary_sheet():
         "message": "Client Recap Workbook generated successfully via Recap Engine." if use_recap_engine else "Summary Sheet generated and validated successfully.",
         "data": {
             "customer": customer,
+            "collection_name": collection_name,
+            "price_basis": price_basis,
             "diamond_quality": diamond_quality,
             "source_file": original_filename,
             "file_size_bytes": file_size_bytes,
